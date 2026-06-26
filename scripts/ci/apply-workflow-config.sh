@@ -28,12 +28,11 @@ allowed=' ALARM_TARBALL_URL RESOLV_CONF_CONTENT PACMAN_HTTP_PROXY PACMAN_HTTPS_P
 emit_env() {
   local key=$1
   local value=$2
-  local delim="EOF_${key}_$$_$(date +%s%N)"
-  {
-    printf '%s<<%s\n' "$key" "$delim"
-    printf '%s\n' "$value"
-    printf '%s\n' "$delim"
-  } >> "$GITHUB_ENV"
+  # Use simple KEY=VALUE format instead of heredoc.
+  # All our values are single-line (URLs, numbers, short strings),
+  # so the heredoc format is unnecessary and can cause parsing issues
+  # if the delimiter is not recognized by GitHub Actions.
+  printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
 }
 
 while IFS= read -r line || [ -n "$line" ]; do

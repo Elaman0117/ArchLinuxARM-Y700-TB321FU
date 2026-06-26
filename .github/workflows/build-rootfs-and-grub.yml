@@ -89,27 +89,25 @@ jobs:
             gdisk qemu-utils sudo ca-certificates gnupg binutils haveged
 
       - name: Apply workflow configuration
+        env:
+          ROOTFS_CONFIG: ${{ inputs.rootfs_config }}
+          BOOT_CONFIG: ${{ inputs.boot_config }}
+          SOURCE_CONFIG: ${{ inputs.source_config }}
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/rootfs.env" <<'CONFIG_EOF'
-          ${{ inputs.rootfs_config }}
-          CONFIG_EOF
-          cat > "$RUNNER_TEMP/boot.env" <<'CONFIG_EOF'
-          ${{ inputs.boot_config }}
-          CONFIG_EOF
-          cat > "$RUNNER_TEMP/source.env" <<'CONFIG_EOF'
-          ${{ inputs.source_config }}
-          CONFIG_EOF
-          sed -i 's/^          //' "$RUNNER_TEMP/rootfs.env" "$RUNNER_TEMP/boot.env" "$RUNNER_TEMP/source.env"
+          # Use printf to write config files — env context reliably preserves
+          # newlines in multiline strings, unlike heredoc with ${{ }} substitution
+          # which can collapse all lines into one.
+          printf '%s\n' "$ROOTFS_CONFIG" > "$RUNNER_TEMP/rootfs.env"
+          printf '%s\n' "$BOOT_CONFIG" > "$RUNNER_TEMP/boot.env"
+          printf '%s\n' "$SOURCE_CONFIG" > "$RUNNER_TEMP/source.env"
           bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/rootfs.env"
           bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/boot.env"
           bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/source.env"
           {
             echo 'OUTPUT_DIR_ROOTFS=out/ci-rootfs'
             echo 'OUTPUT_DIR_GRUB=out/ci-grub'
-            echo 'OUTPUT_PREFIX<<EOF_OUTPUT_PREFIX'
-            echo '${{ inputs.output_prefix }}'
-            echo 'EOF_OUTPUT_PREFIX'
+            echo "OUTPUT_PREFIX=${{ inputs.output_prefix }}"
           } >> "$GITHUB_ENV"
 
       - name: Validate boot source inputs
