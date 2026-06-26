@@ -101,9 +101,9 @@ jobs:
           ${{ inputs.source_config }}
           CONFIG_EOF
           sed -i 's/^          //' "$RUNNER_TEMP/rootfs.env" "$RUNNER_TEMP/boot.env" "$RUNNER_TEMP/source.env"
-          scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/rootfs.env"
-          scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/boot.env"
-          scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/source.env"
+          bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/rootfs.env"
+          bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/boot.env"
+          bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/source.env"
           {
             echo 'OUTPUT_DIR_ROOTFS=out/ci-rootfs'
             echo 'OUTPUT_DIR_GRUB=out/ci-grub'
