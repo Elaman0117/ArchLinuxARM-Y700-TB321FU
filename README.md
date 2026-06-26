@@ -15,9 +15,11 @@ This repository is **inspired by** the [Ubuntu Y700 Build CI](https://github.com
 | Sudo group | `sudo` group | `wheel` group |
 | Locale config | `update-locale` command | Direct `/etc/locale.conf` write |
 | Timezone config | `dpkg-reconfigure tzdata` | Symlink + `/etc/timezone` write |
-| Device firmware | `.deb` packages | Direct firmware file copy (binary blobs) |
-| Initramfs | `initramfs-tools` | `mkinitcpio` |
+| Device firmware | `.deb` packages via `dpkg -i` | `.deb` extracted via `ar` + `tar` (no dpkg needed), plus raw firmware files |
+| Initramfs | `initramfs-tools` | Not used (Y700 boots kernel directly via GRUB, no initrd) |
+| Entropy for keyring | N/A | `haveged` started during `pacman-key --init` |
 | Root password | Locked by default | Set (default: `root`) |
+| Proxy support | `APT_HTTP_PROXY` | `PACMAN_HTTP_PROXY` |
 
 ## Workflow
 
@@ -109,18 +111,21 @@ DTB_NAME=sm8650-lenovo-tb321fu.dtb
 1. **Download**: Fetch the official `ArchLinuxARM-aarch64-latest.tar.gz` from `os.archlinuxarm.org`.
 2. **Create image**: Make an ext4 filesystem image and mount it.
 3. **Extract**: Extract the tarball into the mounted image (replaces `debootstrap`).
-4. **Chroot setup**: Mount `/dev`, `/proc`, `/sys`, `/run` and prepare `resolv.conf`.
-5. **Provision** (in chroot):
+4. **Firmware extraction** (before chroot): Download and extract `FIRMWARE_ARCHIVE`. If it contains `.deb` packages, extract their `data.tar.*` payload using `ar` + `tar` (no dpkg needed). Also handles raw firmware files and `.tar*` overlays.
+5. **Chroot setup**: Mount `/dev`, `/proc`, `/sys`, `/run` and prepare `resolv.conf`.
+6. **Provision** (in chroot):
+   - Start `haveged` for entropy
    - Initialize pacman keyring: `pacman-key --init && pacman-key --populate archlinuxarm`
    - Update system: `pacman -Syu`
-   - Install packages: `pacman -S --needed sudo networkmanager openssh ...`
-   - Enable services: `systemctl enable NetworkManager sshd`
+   - Install packages: `pacman -S --needed sudo networkmanager openssh haveged ...`
+   - Enable services: `systemctl enable NetworkManager sshd haveged`
    - Configure `alarm` user: add to `wheel` group, set password, configure sudo
    - Set timezone via symlink + `/etc/timezone`
    - Set locale via `/etc/locale.gen` + `locale-gen` + `/etc/locale.conf`
-   - Regenerate initramfs with `mkinitcpio -P`
-6. **Firmware**: Apply Y700-specific firmware path fixes (binary blobs).
-7. **Finalize**: Unmount, `e2fsck`, checksum, compress.
+7. **Firmware fixes**: Apply Y700-specific firmware path fixes (copies firmware to canonical `/lib/firmware/qcom/` paths).
+8. **Finalize**: Unmount, `e2fsck`, checksum, compress.
+
+> **Note**: No initramfs is generated because the Y700 boots the kernel Image directly via GRUB without an initrd. The `mkinitcpio` package is installed for users who may want to add an initramfs later.
 
 ### Boot Image (device-specific, mostly distro-agnostic)
 
