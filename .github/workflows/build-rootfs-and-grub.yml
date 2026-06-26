@@ -112,12 +112,29 @@ jobs:
             echo 'EOF_OUTPUT_PREFIX'
           } >> "$GITHUB_ENV"
 
+      - name: Validate boot source inputs
+        run: |
+          set -euo pipefail
+          nz() { [ -n "${1:-}" ]; }
+          if nz "${GRUB_BUILD_ARCHIVE:-}"; then
+            echo "Boot source: GRUB_BUILD_ARCHIVE"
+          elif nz "${QCOMRAMP_EFI_URL:-}"; then
+            echo "Boot source: QCOMRAMP_EFI_URL"
+          elif nz "${BOOT_TEMPLATE_IMAGE:-}" || nz "${BOOT_TEMPLATE_IMAGE_URL:-}"; then
+            echo "Boot source: BOOT_TEMPLATE_IMAGE"
+          else
+            echo "ERROR: One of GRUB_BUILD_ARCHIVE, QCOMRAMP_EFI_URL, or BOOT_TEMPLATE_IMAGE(_URL) must be set." >&2
+            exit 1
+          fi
+
       - name: Prepare GRUB build input
         run: |
           set -euo pipefail
           if [ -n "${GRUB_BUILD_ARCHIVE:-}" ]; then
             mkdir -p "$RUNNER_TEMP/grub-build"
-            curl -fL --retry 3 -o "$RUNNER_TEMP/grub-build.tar" "$GRUB_BUILD_ARCHIVE"
+            echo "Downloading GRUB_BUILD_ARCHIVE: $GRUB_BUILD_ARCHIVE"
+            curl --fail --location --retry 3 --retry-all-errors --show-error \
+              -o "$RUNNER_TEMP/grub-build.tar" "$GRUB_BUILD_ARCHIVE"
             if ! tar -C "$RUNNER_TEMP/grub-build" -xf "$RUNNER_TEMP/grub-build.tar"; then
               tar -C "$RUNNER_TEMP/grub-build" -xzf "$RUNNER_TEMP/grub-build.tar"
             fi
@@ -131,7 +148,7 @@ jobs:
             echo 'Y700_GRUB_BUILD_DIR=' >> "$GITHUB_ENV"
             echo 'Using BOOT_TEMPLATE_IMAGE; preserving verified GRUB/EFI template.'
           else
-            echo 'Either GRUB_BUILD_ARCHIVE, QCOMRAMP_EFI_URL, or BOOT_TEMPLATE_IMAGE must be set.' >&2
+            echo 'One of GRUB_BUILD_ARCHIVE, QCOMRAMP_EFI_URL, or BOOT_TEMPLATE_IMAGE must be set.' >&2
             exit 1
           fi
 
