@@ -89,18 +89,23 @@ jobs:
             gdisk qemu-utils sudo ca-certificates gnupg binutils haveged
 
       - name: Apply workflow configuration
+        env:
+          ROOTFS_CONFIG: |-
+            ${{ inputs.rootfs_config }}
+          BOOT_CONFIG: |-
+            ${{ inputs.boot_config }}
+          SOURCE_CONFIG: |-
+            ${{ inputs.source_config }}
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/rootfs.env" <<'CONFIG_EOF'
-          ${{ inputs.rootfs_config }}
-          CONFIG_EOF
-          cat > "$RUNNER_TEMP/boot.env" <<'CONFIG_EOF'
-          ${{ inputs.boot_config }}
-          CONFIG_EOF
-          cat > "$RUNNER_TEMP/source.env" <<'CONFIG_EOF'
-          ${{ inputs.source_config }}
-          CONFIG_EOF
-          sed -i 's/^          //' "$RUNNER_TEMP/rootfs.env" "$RUNNER_TEMP/boot.env" "$RUNNER_TEMP/source.env"
+          # env: with |- block scalars reliably preserves newlines in multiline strings.
+          # The previous heredoc approach lost all newlines because GitHub Actions
+          # processes ${{ }} at the YAML level, collapsing the multiline input
+          # into a single line before bash sees the heredoc.
+          printf '%s\n' "$ROOTFS_CONFIG" | sed 's/^[[:space:]]*//' > "$RUNNER_TEMP/rootfs.env"
+          printf '%s\n' "$BOOT_CONFIG" | sed 's/^[[:space:]]*//' > "$RUNNER_TEMP/boot.env"
+          printf '%s\n' "$SOURCE_CONFIG" | sed 's/^[[:space:]]*//' > "$RUNNER_TEMP/source.env"
+          echo "rootfs.env lines: $(wc -l < "$RUNNER_TEMP/rootfs.env")"
           bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/rootfs.env"
           bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/boot.env"
           bash scripts/ci/apply-workflow-config.sh "$RUNNER_TEMP/source.env"
