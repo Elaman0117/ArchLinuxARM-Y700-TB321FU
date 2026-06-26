@@ -90,9 +90,9 @@ jobs:
 
       - name: Apply workflow configuration
         env:
-          ROOTFS_CONFIG: ${{ inputs.rootfs_config }}
-          BOOT_CONFIG: ${{ inputs.boot_config }}
-          SOURCE_CONFIG: ${{ inputs.source_config }}
+          ROOTFS_CONFIG: "${{ inputs.rootfs_config }}"
+          BOOT_CONFIG: "${{ inputs.boot_config }}"
+          SOURCE_CONFIG: "${{ inputs.source_config }}"
         run: |
           set -euo pipefail
           # Use printf to write config files — env context reliably preserves
